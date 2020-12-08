@@ -60,6 +60,12 @@ create_vpc ()
     --cidr-block 192.168.32.0/19 > $LOGDIR/create-subnet-private2.log
   PRIVATE_SUBNET_ID2=$(cat $LOGDIR/create-subnet-private2.log | jq -r .Subnet.SubnetId)
 
+  aws ec2 create-subnet \
+    --availability-zone ${AWS_REGION}b \
+    --vpc-id $VPCID \
+    --cidr-block 192.168.64.0/19 > $LOGDIR/create-subnet-private3.log
+  PRIVATE_SUBNET_ID3=$(cat $LOGDIR/create-subnet-private3.log | jq -r .Subnet.SubnetId)
+
   echo "Creating IGW"
   aws ec2 create-internet-gateway > $LOGDIR/create-internet-gateway.log
   INTERNET_GW_ID=$(cat $LOGDIR/create-internet-gateway.log | jq -r .InternetGateway.InternetGatewayId)
@@ -78,6 +84,10 @@ create_vpc ()
       aws ec2 associate-route-table \
         --subnet-id $PRIVATE_SUBNET_ID2 \
         --route-table-id $PRIVATE_RT_ID > $LOGDIR/associate-route-table-private2.log
+
+      aws ec2 associate-route-table \
+        --subnet-id $PRIVATE_SUBNET_ID3 \
+        --route-table-id $PRIVATE_RT_ID > $LOGDIR/associate-route-table-private3.log
 
       aws ec2 create-route-table \
         --vpc-id $VPCID > $LOGDIR/create-route-table-public.log
@@ -194,7 +204,7 @@ create_alb_and_target_group()
   if [ -z $lambda_function_name ]
   then
     zip helloworld_27.py.zip helloworld_27.py
-    aws lambda create-function --function-name $FUNCTIONNAME --zip-file fileb://helloworld_27.py.zip --handler 'helloworld_27.lambda_handler' --runtime 'python2.7' --role $IAM_ROLE_ARN
+    aws lambda create-function --function-name $FUNCTIONNAME --zip-file fileb://helloworld_27.py.zip --handler 'helloworld_27.lambda_handler' --runtime 'python2.7' --role $IAM_ROLE_ARN --vpc-config SubnetIds="${PRIVATE_SUBNET_ID3}",SecurityGroupIds="$PRIVATE_SG_ID"
   else
     echo "Info: Lambda function name is already present, please change if new function required."
   fi
